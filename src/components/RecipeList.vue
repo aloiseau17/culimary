@@ -1,84 +1,102 @@
 <template>
-  <table>
-    <thead>
-      <th v-for="header in headers" :key="`${header.value}-header-item`">
-        {{ header.text }}
-      </th>
-    </thead>
-    <tbody>
-      <tr v-for="recipe in recipes" :key="`${recipe.id}-recipe-item`">
-        <td v-for="header in headers" :key="`${header.value}-recipe-col-item`">
-          <!-- INGREDIENTS -->
-          <template v-if="header.value === 'ingredients'">
-            <span
-              class="ingredient"
-              v-for="(ingredient, index) in recipe.ingredients"
-              :key="`${index}-${ingredient}-ingredient`"
-            >
-              {{ ingredient }}
-            </span>
-          </template>
+  <label for="filter">Rechercher par ingrédients</label>
+  <br />
+  <input id="filter" type="text" v-model="filtersIngredient" />
+  total: {{ recipesFiltered.length }}
 
-          <!-- LOCATION -->
-          <template v-else-if="header.value === 'location'">
-            <strong>{{ recipe.location.type }}:</strong>
-            <template v-if="recipe.location.type === 'web'">
-              <a :href="recipe.location.detail" target="_blank">
-                {{ recipe.location.detail }}
-              </a>
-            </template>
+  <ElTable height="80vh" :data="recipesDisplayed">
+    <!-- NAME -->
+    <ElTableColumn prop="name" label="Nom" />
+    <!-- INGREDIENTS -->
+    <ElTableColumn prop="ingredients" label="Ingrédients" #default="{ row }">
+      <span
+        class="ingredient"
+        v-for="(ingredient, index) in row.ingredients"
+        :key="`${index}-${ingredient}-ingredient`"
+      >
+        {{ ingredient }}
+      </span>
+    </ElTableColumn>
+    <!-- TYPE -->
+    <ElTableColumn prop="type" label="Type" />
+    <!-- FAVORITE -->
+    <ElTableColumn
+      prop="isFavorite"
+      label="Favoris"
+      :formatter="isFavoriteFormatter"
+    />
+    <!-- LOCATION -->
+    <ElTableColumn prop="location" label="Emplacement" #default="{ row }">
+      <!-- <strong>{{ row.location.type }}:</strong> -->
+      <i
+        class="location-icon"
+        :class="{
+          'el-icon-notebook-2': row.location.type === 'livre',
+          'el-icon-link': row.location.type === 'web',
+        }"
+      ></i>
+      <template v-if="row.location.type === 'web'">
+        <a :href="row.location.detail" target="_blank">
+          {{ row.location.detail }}
+        </a>
+      </template>
+      <template v-else>
+        {{ row.location.detail }}
+      </template>
+    </ElTableColumn>
+  </ElTable>
 
-            <template v-else>
-              {{ recipe.location.detail }}
-            </template>
-          </template>
-
-          <!-- FAVORITE -->
-          <template v-else-if="header.value === 'isFavorite'">
-            {{ recipe[header.value] ? '✔️' : '❌' }}
-          </template>
-
-          <!-- DEFAULT -->
-          <template v-else>
-            {{ recipe[header.value] }}
-          </template>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <ElPagination
+    layout="prev, pager, next"
+    :total="recipesFiltered.length"
+    :page-size="pagesize"
+    v-model:currentPage="currentPage"
+  />
 </template>
 
 <script>
 import recipes from '@/data/recipes.json'
+import { ElTable, ElTableColumn, ElPagination } from 'element-plus'
 
 export default {
   name: 'RecipeList',
+  components: {
+    ElTable,
+    ElTableColumn,
+    ElPagination,
+  },
   data() {
     return {
-      headers: [
-        {
-          text: 'Nom',
-          value: 'name',
-        },
-        {
-          text: 'Ingrédients',
-          value: 'ingredients',
-        },
-        {
-          text: 'Type',
-          value: 'type',
-        },
-        {
-          text: 'Favoris',
-          value: 'isFavorite',
-        },
-        {
-          text: 'Emplacement',
-          value: 'location',
-        },
-      ],
       recipes: recipes,
+      currentPage: 1,
+      pagesize: 8,
+      filtersIngredient: null,
     }
+  },
+  watch: {
+    filtersIngredient() {
+      this.currentPage = 1
+    },
+  },
+  computed: {
+    recipesFiltered() {
+      return this.recipes.filter((recipe) => {
+        return this.filtersIngredient
+          ? recipe.ingredients.join().includes(this.filtersIngredient)
+          : true
+      })
+    },
+    recipesDisplayed() {
+      return this.recipesFiltered.slice(
+        (this.currentPage - 1) * this.pagesize,
+        this.currentPage * this.pagesize
+      )
+    },
+  },
+  methods: {
+    isFavoriteFormatter(row) {
+      return row.isFavorite ? '✔️' : '❌'
+    },
   },
 }
 </script>
@@ -95,20 +113,8 @@ export default {
   display: inline-block;
 }
 
-table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
-}
-
-td,
-th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
-}
-
-tr:nth-child(even) {
-  background-color: #ececec;
+.location-icon {
+  font-size: 1.4em;
+  margin-right: 5px;
 }
 </style>
